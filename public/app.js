@@ -6,7 +6,7 @@ function message(t,ok=false){$('#message').textContent=t;$('#message').style.col
 function configured(){return window.SUPABASE_URL?.startsWith('https://')&&window.SUPABASE_ANON_KEY&&!window.SUPABASE_ANON_KEY.startsWith('COLE_')}
 function page(id){$$('.page').forEach(p=>p.classList.toggle('active',p.id===id));$$('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));$('#title').textContent=$(`nav button[data-page="${id}"]`)?.textContent||id}$$('nav button[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('active',x===b));$('#login').hidden=b.dataset.form!=='login';$('#register').hidden=b.dataset.form!=='register'});
-$('#login').onsubmit=async e=>{e.preventDefault();if(!configured())return message('Configure o Supabase primeiro.');const f=Object.fromEntries(new FormData(e.target));$('#login').onsubmit = async e => {
+$('#login').onsubmit = async e => {
   e.preventDefault();
 
   if (!configured()) {
@@ -22,6 +22,9 @@ $('#login').onsubmit=async e=>{e.preventDefault();if(!configured())return messag
 
   console.log("LOGIN DATA:", data);
   console.log("LOGIN ERROR:", error);
+
+  const { data: sessionData } = await sb.auth.getSession();
+  console.log("SESSION:", sessionData);
 
   if (error) {
     return message(error.message);
