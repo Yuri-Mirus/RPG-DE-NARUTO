@@ -63,10 +63,20 @@ async function boot() {
 
   profile = data;
 
-  $('#auth').hidden = true;
-  $('#app').hidden = false;
+console.log("ANTES DE MOSTRAR APP");
 
+$('#auth').hidden = true;
+$('#app').hidden = false;
+
+console.log("ANTES DO RENDER");
+
+try {
   await render();
+  console.log("RENDER OK");
+} catch (e) {
+  console.error("ERRO NO RENDER:", e);
+  alert("Erro no render: " + e.message);
+}
 }
 $$('.map button').forEach(b=>b.onclick=()=>$('#nation').innerHTML=`<h3>${b.dataset.nation}</h3><p>${nations[b.dataset.nation]}</p>`);$('#nation').innerHTML='<h3>Mapa-múndi</h3><p>Escolha uma nação.</p>';
 $$('.dice-buttons button').forEach(b=>b.onclick=async()=>{const {data,error}=await sb.rpc('roll_die',{requested_sides:Number(b.dataset.die)});if(error)return alert(error.message);$('#die').classList.add('rolling');setTimeout(()=>{$('#die').textContent=data.value;$('#die').classList.remove('rolling')},300);await render()});
