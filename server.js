@@ -37,4 +37,20 @@ async function api(req,res,url) {
   return json(res,404,{error:'Rota não encontrada'});
 }
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
-http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(url.pathname.startsWith('/api/'))return await api(req,res,url);const file=url.pathname==='/'?'index.html':url.pathname.slice(1);const full=path.join(root,'public',file);if(!full.startsWith(path.join(root,'public')))return json(res,400,{error:'Caminho inválido'});res.writeHead(200,{'Content-Type':types[path.extname(full)]||'application/octet-stream'});res.end(await readFile(full));}catch(error){json(res,500,{error:error.message||'Erro interno'});}}).listen(process.env.PORT||3000,()=>console.log('Shinobi RPG em http://localhost:3000'));
+http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(url.pathname.startsWith('/api/'))return await api(req,res,url);const file=url.pathname==='/'?'index.html':url.pathname.slice(1);const full=path.join(root,'public',file);if(!full.startsWith(path.join(root,'public')))return json(res,400,{error:'Caminho inválido'});const content = await readFile(full);
+
+res.writeHead(200, {
+  'Content-Type': types[path.extname(full)] || 'application/octet-stream'
+});
+
+res.end(content);}catch (error) {
+  console.error(error);
+
+  if (!res.headersSent) {
+    json(res, 500, {
+      error: error.message || 'Erro interno'
+    });
+  } else {
+    res.end();
+  }
+}}).listen(process.env.PORT||3000,()=>console.log('Shinobi RPG em http://localhost:3000'));
