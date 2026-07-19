@@ -35,7 +35,39 @@ $('#login').onsubmit = async e => {
 $('#register').onsubmit=async e=>{e.preventDefault();if(!configured())return message('Configure o Supabase primeiro.');const f=Object.fromEntries(new FormData(e.target));const {data,error}=await sb.auth.signUp({email:f.email,password:f.password});if(error)return message(error.message);if(!data.user)return message('Confira seu e-mail para confirmar a conta.',true);const {error:profileError}=await sb.rpc('create_profile',{name:f.name});if(profileError)return message(profileError.message);if(f.role!=='player'){const {error:roleError}=await sb.rpc('claim_role',{requested:f.role,supplied_code:f.code});if(roleError)return message('Conta criada como player. Faça login e confira o código para elevar o perfil.')}message('Conta criada. Você já pode entrar.',true);e.target.reset()};
 async function fetchState(){const [{data:sheets},{data:rolls},{data:timeline},{data:notes}]=await Promise.all([sb.from('character_sheets').select('*').order('updated_at',{ascending:false}),sb.from('dice_rolls').select('*,profiles(display_name)').order('created_at',{ascending:false}).limit(30),sb.from('campaign_events').select('*,profiles(display_name)').order('created_at',{ascending:false}).limit(100),sb.from('master_notes').select('*,profiles(display_name)').order('created_at',{ascending:false})]);return {sheets:sheets||[],rolls:rolls||[],timeline:timeline||[],notes:notes||[]}}
 async function render(){const state=await fetchState();document.body.className=profile.role;$('#who').textContent=`${profile.display_name} · ${profile.role}`;$('#timeline').innerHTML=state.timeline.map(x=>`<div><b>${x.profiles?.display_name||'Mestre'}</b> ${x.action}<br><span>${x.detail}</span></div>`).join('')||'<p>Nenhuma crônica ainda.</p>';$('#rolls').innerHTML=state.rolls.map(r=>`<div><b>${r.profiles?.display_name||'Shinobi'}</b> rolou d${r.sides}: <strong>${r.value}</strong></div>`).join('');$('#sheets-list').innerHTML=state.sheets.map(s=>`<div class="card sheet"><h3>${s.title}</h3><p>${s.content}</p></div>`).join('');const mine=state.sheets.find(s=>s.owner_id===session.user.id);$('#sheet-form').title.value=mine?.title||'';$('#sheet-form').content.value=mine?.content||'';$('#notes').innerHTML=state.notes.map(n=>`<div><b>Nota de ${n.profiles?.display_name||'Mestre'}</b><br>${n.text}</div>`).join('')||'<p>Sem notas secretas.</p>'}
-async function boot(){const {data:{session:s}}=await sb.auth.getSession();if(!s)return;session=s;const {data,error}=await sb.from('profiles').select('*').eq('id',s.user.id).single();if(error)return message('Perfil não encontrado. Entre novamente.');profile=data;$('#auth').hidden=true;$('#app').hidden=false;await render()}
+async function boot() {
+  const { data: { session: s } } = await sb.auth.getSession();
+
+  console.log("SESSION:", s);
+
+  if (!s) {
+    alert("Não existe sessão!");
+    return;
+  }
+
+  session = s;
+
+  const { data, error } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', s.user.id)
+    .single();
+
+  console.log("PROFILE:", data);
+  console.log("PROFILE ERROR:", error);
+
+  if (error) {
+    alert("Erro ao buscar perfil: " + error.message);
+    return;
+  }
+
+  profile = data;
+
+  $('#auth').hidden = true;
+  $('#app').hidden = false;
+
+  await render();
+}
 $$('.map button').forEach(b=>b.onclick=()=>$('#nation').innerHTML=`<h3>${b.dataset.nation}</h3><p>${nations[b.dataset.nation]}</p>`);$('#nation').innerHTML='<h3>Mapa-múndi</h3><p>Escolha uma nação.</p>';
 $$('.dice-buttons button').forEach(b=>b.onclick=async()=>{const {data,error}=await sb.rpc('roll_die',{requested_sides:Number(b.dataset.die)});if(error)return alert(error.message);$('#die').classList.add('rolling');setTimeout(()=>{$('#die').textContent=data.value;$('#die').classList.remove('rolling')},300);await render()});
 $('#sheet-form').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const {error}=await sb.from('character_sheets').upsert({owner_id:session.user.id,title:f.title||'Ficha sem nome',content:f.content||'',updated_at:new Date().toISOString()},{onConflict:'owner_id'});if(error)alert(error.message);else render()};
