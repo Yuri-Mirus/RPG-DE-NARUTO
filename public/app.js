@@ -6,7 +6,29 @@ function message(t,ok=false){$('#message').textContent=t;$('#message').style.col
 function configured(){return window.SUPABASE_URL?.startsWith('https://')&&window.SUPABASE_ANON_KEY&&!window.SUPABASE_ANON_KEY.startsWith('COLE_')}
 function page(id){$$('.page').forEach(p=>p.classList.toggle('active',p.id===id));$$('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));$('#title').textContent=$(`nav button[data-page="${id}"]`)?.textContent||id}$$('nav button[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page));
 $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('active',x===b));$('#login').hidden=b.dataset.form!=='login';$('#register').hidden=b.dataset.form!=='register'});
-$('#login').onsubmit=async e=>{e.preventDefault();if(!configured())return message('Configure o Supabase primeiro.');const f=Object.fromEntries(new FormData(e.target));const {error}=await sb.auth.signInWithPassword({email:f.email,password:f.password});if(error)return message(error.message);await boot()};
+$('#login').onsubmit=async e=>{e.preventDefault();if(!configured())return message('Configure o Supabase primeiro.');const f=Object.fromEntries(new FormData(e.target));$('#login').onsubmit = async e => {
+  e.preventDefault();
+
+  if (!configured()) {
+    return message('Configure o Supabase primeiro.');
+  }
+
+  const f = Object.fromEntries(new FormData(e.target));
+
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: f.email,
+    password: f.password
+  });
+
+  console.log("LOGIN DATA:", data);
+  console.log("LOGIN ERROR:", error);
+
+  if (error) {
+    return message(error.message);
+  }
+
+  await boot();
+};
 $('#register').onsubmit=async e=>{e.preventDefault();if(!configured())return message('Configure o Supabase primeiro.');const f=Object.fromEntries(new FormData(e.target));const {data,error}=await sb.auth.signUp({email:f.email,password:f.password});if(error)return message(error.message);if(!data.user)return message('Confira seu e-mail para confirmar a conta.',true);const {error:profileError}=await sb.rpc('create_profile',{name:f.name});if(profileError)return message(profileError.message);if(f.role!=='player'){const {error:roleError}=await sb.rpc('claim_role',{requested:f.role,supplied_code:f.code});if(roleError)return message('Conta criada como player. Faça login e confira o código para elevar o perfil.')}message('Conta criada. Você já pode entrar.',true);e.target.reset()};
 async function fetchState(){const [{data:sheets},{data:rolls},{data:timeline},{data:notes}]=await Promise.all([sb.from('character_sheets').select('*').order('updated_at',{ascending:false}),sb.from('dice_rolls').select('*,profiles(display_name)').order('created_at',{ascending:false}).limit(30),sb.from('campaign_events').select('*,profiles(display_name)').order('created_at',{ascending:false}).limit(100),sb.from('master_notes').select('*,profiles(display_name)').order('created_at',{ascending:false})]);return {sheets:sheets||[],rolls:rolls||[],timeline:timeline||[],notes:notes||[]}}
 async function render(){const state=await fetchState();document.body.className=profile.role;$('#who').textContent=`${profile.display_name} · ${profile.role}`;$('#timeline').innerHTML=state.timeline.map(x=>`<div><b>${x.profiles?.display_name||'Mestre'}</b> ${x.action}<br><span>${x.detail}</span></div>`).join('')||'<p>Nenhuma crônica ainda.</p>';$('#rolls').innerHTML=state.rolls.map(r=>`<div><b>${r.profiles?.display_name||'Shinobi'}</b> rolou d${r.sides}: <strong>${r.value}</strong></div>`).join('');$('#sheets-list').innerHTML=state.sheets.map(s=>`<div class="card sheet"><h3>${s.title}</h3><p>${s.content}</p></div>`).join('');const mine=state.sheets.find(s=>s.owner_id===session.user.id);$('#sheet-form').title.value=mine?.title||'';$('#sheet-form').content.value=mine?.content||'';$('#notes').innerHTML=state.notes.map(n=>`<div><b>Nota de ${n.profiles?.display_name||'Mestre'}</b><br>${n.text}</div>`).join('')||'<p>Sem notas secretas.</p>'}
